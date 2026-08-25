@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DATORYX Operator</title>
+<style>
+  :root {
+    --bg: #0a0d12;
+    --panel: #10151d;
+    --panel-raised: #151b26;
+    --line: #1f2937;
+    --accent: #00ff9d;
+    --accent-dim: #00ff9d33;
+    --warn: #ff9d00;
+    --danger: #ff4d4d;
+    --text: #d7dde5;
+    --text-dim: #6b7688;
+    --mono: 'JetBrains Mono', 'Courier New', monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: radial-gradient(ellipse at top, #0d1420 0%, #080b10 60%);
+    color: var(--text);
+    font-family: var(--mono);
+    min-height: 100vh;
+  }
+  .scanlines {
+    pointer-events: none;
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(180deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px);
+    z-index: 999;
+  }
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--line);
+    background: linear-gradient(180deg, #0d131c, #0a0d12);
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 12px var(--accent); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+  .brand h1 { font-size: 15px; letter-spacing: 4px; margin: 0; font-weight: 600; color: var(--text); text-transform: uppercase; }
+  .brand small { display: block; color: var(--text-dim); font-size: 10px; letter-spacing: 2px; margin-top: 2px; }
+  .status-row { display: flex; gap: 18px; font-size: 11px; color: var(--text-dim); align-items: center; }
+  .status-row span.on { color: var(--accent); }
+  #userBadge { display: none; align-items: center; gap: 10px; }
+  button.mini { background: transparent; border: 1px solid var(--line); color: var(--text-dim); font-family: var(--mono); font-size: 10px; padding: 6px 10px; cursor: pointer; letter-spacing: 1px; border-radius: 3px; }
+  button.mini:hover { border-color: var(--accent); color: var(--accent); }
+
+  main { padding: 28px; max-width: 1400px; margin: 0 auto; }
+
+  /* ---- Auth gate ---- */
+  #authGate { max-width: 400px; margin: 80px auto; }
+  #authGate .panel { padding: 28px; }
+  #authGate h2 { font-size: 13px; letter-spacing: 3px; text-transform: uppercase; color: var(--text-dim); margin: 0 0 20px; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 10px; letter-spacing: 1.5px; color: var(--text-dim); margin-bottom: 6px; text-transform: uppercase; }
+  .field input {
+    width: 100%; background: var(--bg); border: 1px solid var(--line); color: var(--text);
+    padding: 10px 12px; font-family: var(--mono); font-size: 13px; border-radius: 3px;
+  }
+  .field input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent-dim); }
+  .btn-primary {
+    width: 100%; background: var(--accent); color: #041a10; border: none;
+    padding: 11px; font-family: var(--mono); font-weight: 700; font-size: 12px;
+    letter-spacing: 2px; text-transform: uppercase; cursor: pointer; border-radius: 3px; margin-top: 6px;
+  }
+  .btn-primary:hover { filter: brightness(1.1); }
+  .toggle-mode { text-align: center; margin-top: 16px; font-size: 11px; color: var(--text-dim); cursor: pointer; }
+  .toggle-mode:hover { color: var(--accent); }
+  .error-msg { color: var(--danger); font-size: 11px; margin-top: 10px; min-height: 14px; }
+
+  /* ---- Panels ---- */
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+  }
+  #app { display: none; }
+  .grid { display: grid; grid-template-columns: 320px 1fr; gap: 20px; margin-top: 20px; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+  .section-label { font-size: 10px; letter-spacing: 2px; color: var(--text-dim); text-transform: uppercase; padding: 14px 16px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; }
+  #agentList { max-height: 640px; overflow-y: auto; }
+  .agent-item { padding: 12px 16px; border-bottom: 1px solid var(--line); cursor: pointer; transition: background 0.15s; }
+  .agent-item:hover { background: var(--panel-raised); }
+  .agent-item.active { background: var(--panel-raised); border-left: 2px solid var(--accent); }
+  .agent-item .name { font-size: 12px; color: var(--text); text-transform: capitalize; }
+  .agent-item .meta { font-size: 10px; color: var(--text-dim); margin-top: 3px; }
+
+  .console { padding: 18px; }
+  .console-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
+  .console-header h3 { margin: 0; font-size: 14px; color: var(--accent); text-transform: capitalize; }
+  .console-header p { margin: 4px 0 0; font-size: 11px; color: var(--text-dim); }
+
+  .cap-chip { display: inline-block; background: var(--panel-raised); border: 1px solid var(--line); font-size: 10px; padding: 4px 9px; border-radius: 12px; margin: 3px 4px 3px 0; cursor: pointer; color: var(--text-dim); }
+  .cap-chip:hover, .cap-chip.selected { border-color: var(--accent); color: var(--accent); }
+
+  textarea, input.query {
+    width: 100%; background: var(--bg); border: 1px solid var(--line); color: var(--text);
+    padding: 10px 12px; font-family: var(--mono); font-size: 12px; border-radius: 3px; margin-top: 10px; resize: vertical;
+  }
+  .run-btn {
+    background: var(--accent); color: #041a10; border: none; padding: 9px 18px;
+    font-family: var(--mono); font-weight: 700; font-size: 11px; letter-spacing: 1.5px;
+    text-transform: uppercase; cursor: pointer; border-radius: 3px; margin-top: 10px;
+  }
+  .run-btn:disabled { opacity: 0.5; cursor: wait; }
+
+  .output {
+    margin-top: 16px; background: #060809; border: 1px solid var(--line); border-radius: 3px;
+    padding: 14px; font-size: 11px; white-space: pre-wrap; word-break: break-word; max-height: 340px; overflow-y: auto;
+    color: #8fe6bd;
+  }
+  .output.empty { color: var(--text-dim); font-style: italic; }
+  .output .meta-line { color: var(--text-dim); margin-bottom: 8px; }
+  .output .ok { color: var(--accent); }
+  .output .fail { color: var(--danger); }
+
+  .stats-bar { display: flex; gap: 14px; margin-top: 20px; }
+  .stat { flex: 1; padding: 14px 16px; }
+  .stat .num { font-size: 22px; color: var(--accent); font-weight: 700; }
+  .stat .lbl { font-size: 10px; letter-spacing: 1.5px; color: var(--text-dim); text-transform: uppercase; margin-top: 4px; }
+
+  /* ---- Extended features ---- */
+  .feature-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+  .feature-chip {
+    background: var(--panel); border: 1px solid var(--line); color: var(--text-dim);
+    font-size: 11px; padding: 7px 14px; border-radius: 16px; cursor: pointer;
+    font-family: var(--mono); letter-spacing: 0.5px;
+  }
+  .feature-chip:hover, .feature-chip.selected { border-color: var(--accent); color: var(--accent); }
+  .feature-panel { margin-top: 14px; padding: 18px; display: none; }
+  .feature-panel.open { display: block; }
+  .feature-panel h3 { margin: 0 0 4px; font-size: 13px; color: var(--accent); }
+  .feature-panel .note { font-size: 11px; color: var(--text-dim); margin: 0 0 12px; }
+  .feature-panel .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+  .feature-panel input[type=text], .feature-panel input[type=number], .feature-panel select {
+    background: var(--bg); border: 1px solid var(--line); color: var(--text);
+    padding: 8px 10px; font-family: var(--mono); font-size: 12px; border-radius: 3px;
+  }
+  .list-item { padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
+  .list-item a { color: var(--accent); text-decoration: none; }
+  .list-item a:hover { text-decoration: underline; }
+  .list-item .del { color: var(--danger); cursor: pointer; font-size: 10px; margin-left: 10px; }
+</style>
+</head>
+<body>
+<script>
+  // Set this to your deployed backend's URL (e.g. Render) before the
+  // dashboard's own script block runs. Leave blank if frontend+backend
+  // are served from the same origin (e.g. Docker/docker-compose).
+  window.DATORYX_API_BASE = "";
+</script>
+<div class="scanlines"></div>
+
+<header>
+  <div class="brand">
+    <div class="dot"></div>
+    <div>
+      <h1>DATORYX // Operator</h1>
+      <small>Multi-agent AI console</small>
+    </div>
+  </div>
+  <div class="status-row">
+    <span>API: <span class="on" id="apiStatus">checking...</span></span>
+    <div id="userBadge">
+      <span id="userEmail"></span>
+      <button class="mini" onclick="logout()">LOGOUT</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- AUTH GATE -->
+  <div id="authGate">
+    <div class="panel">
+      <h2 id="authTitle">Sign in</h2>
+      <div class="field" id="nameField" style="display:none">
+        <label>Name</label>
+        <input type="text" id="regName" placeholder="Anu">
+      </div>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="authEmail" placeholder="you@example.com">
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="authPassword" placeholder="min 8 characters">
+      </div>
+      <button class="btn-primary" id="authSubmit" onclick="submitAuth()">Sign in</button>
+      <div class="error-msg" id="authError"></div>
+      <div class="toggle-mode" id="toggleMode" onclick="toggleAuthMode()">Need an account? Register instead</div>
+    </div>
+  </div>
+
+  <!-- APP -->
+  <div id="app">
+    <div class="stats-bar">
+      <div class="panel stat"><div class="num" id="statAgents">--</div><div class="lbl">Agents online</div></div>
+      <div class="panel stat"><div class="num" id="statCaps">--</div><div class="lbl">Capabilities</div></div>
+      <div class="panel stat"><div class="num" id="statCalls">0</div><div class="lbl">Calls this session</div></div>
+    </div>
+
+    <div class="feature-bar" id="featureBar">
+      <span class="feature-chip" data-f="swarm" onclick="openFeature('swarm')">Swarm</span>
+      <span class="feature-chip" data-f="plugins" onclick="openFeature('plugins')">Plugins</span>
+      <span class="feature-chip" data-f="docs" onclick="openFeature('docs')">Docs</span>
+      <span class="feature-chip" data-f="slides" onclick="openFeature('slides')">Slides</span>
+      <span class="feature-chip" data-f="sheets" onclick="openFeature('sheets')">Sheets</span>
+      <span class="feature-chip" data-f="websites" onclick="openFeature('websites')">Websites</span>
+      <span class="feature-chip" data-f="research" onclick="openFeature('research')">Deep Research</span>
+      <span class="feature-chip" data-f="images" onclick="openFeature('images')">Images</span>
+      <span class="feature-chip" data-f="artifacts" onclick="openFeature('artifacts')">Artifacts</span>
+      <span class="feature-chip" data-f="projects" onclick="openFeature('projects')">Projects</span>
+      <span class="feature-chip" data-f="customize" onclick="openFeature('customize')">Customize</span>
+      <span class="feature-chip" data-f="tasks" onclick="openFeature('tasks')">Scheduled Tasks</span>
+    </div>
+    <div class="panel feature-panel" id="featurePanel"></div>
+
+    <div class="grid">
+      <div class="panel">
+        <div class="section-label"><span>Agent roster</span><span id="agentCount"></span></div>
+        <div id="agentList"></div>
+      </div>
+
+      <div class="panel console">
+        <div id="consoleEmpty" class="output empty">Select an agent from the roster to begin. Code: pick the "Coding" agent below - it already handles code generation/review.</div>
+        <div id="consoleBody" style="display:none">
+          <div class="console-header">
+            <div>
+              <h3 id="activeAgentName"></h3>
+              <p id="activeAgentDesc"></p>
+            </div>
+          </div>
+          <div id="capChips"></div>
+          <textarea id="queryInput" rows="3" placeholder="Describe the task or ask a free-form question..."></textarea>
+          <button class="run-btn" id="runBtn" onclick="runQuery()">Execute</button>
+          <div class="output empty" id="resultOutput">No output yet.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+// API base: same-origin by default (works when frontend+backend are served
+// together, e.g. Docker). On Vercel the frontend is static-only, so it's
+// deployed separately from the backend - set window.DATORYX_API_BASE below
+// (or edit this line directly) to your deployed backend URL, e.g. the
+// Render URL from render.yaml: https://datoryx-operator-api.onrender.com
+const API = window.DATORYX_API_BASE || '';
+let token = localStorage.getItem('datoryx_token') || null;
+let agents = [];
+let activeAgent = null;
+let activeCapability = null;
+let callCount = 0;
+let authMode = 'login';
+
+async function apiCall(path, opts = {}) {
+  const headers = opts.headers || {};
+  headers['Content-Type'] = 'application/json';
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  const res = await fetch(API + path, { ...opts, headers });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.detail || res.statusText);
+  return data;
+}
+
+async function checkHealth() {
+  try {
+    await apiCall('/health');
+    document.getElementById('apiStatus').textContent = 'online';
+  } catch (e) {
+    document.getElementById('apiStatus').textContent = 'offline';
+    document.getElementById('apiStatus').style.color = 'var(--danger)';
+  }
+}
+
+function toggleAuthMode() {
+  authMode = authMode === 'login' ? 'register' : 'login';
+  document.getElementById('authTitle').textContent = authMode === 'login' ? 'Sign in' : 'Create account';
+  document.getElementById('authSubmit').textContent = authMode === 'login' ? 'Sign in' : 'Register';
+  document.getElementById('nameField').style.display = authMode === 'register' ? 'block' : 'none';
+  document.getElementById('toggleMode').textContent = authMode === 'login'
+    ? 'Need an account? Register instead' : 'Already have an account? Sign in';
+  document.getElementById('authError').textContent = '';
+}
+
+async function submitAuth() {
+  const email = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPassword').value;
+  const name = document.getElementById('regName').value.trim();
+  const errEl = document.getElementById('authError');
+  errEl.textContent = '';
+  if (!email || !password) { errEl.textContent = 'Email and password required.'; return; }
+  try {
+    const path = authMode === 'login' ? '/auth/login' : '/auth/register';
+    const body = authMode === 'login' ? { email, password } : { email, password, name };
+    const data = await apiCall(path, { method: 'POST', body: JSON.stringify(body) });
+    token = data.access_token;
+    localStorage.setItem('datoryx_token', token);
+    await enterApp();
+  } catch (e) {
+    errEl.textContent = e.message;
+  }
+}
+
+function logout() {
+  token = null;
+  localStorage.removeItem('datoryx_token');
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('authGate').style.display = 'block';
+  document.getElementById('userBadge').style.display = 'none';
+}
+
+async function enterApp() {
+  const me = await apiCall('/auth/me');
+  document.getElementById('userEmail').textContent = me.email;
+  document.getElementById('userBadge').style.display = 'flex';
+  document.getElementById('authGate').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  await loadAgents();
+}
+
+async function loadAgents() {
+  agents = await apiCall('/agents');
+  document.getElementById('statAgents').textContent = agents.length;
+  document.getElementById('statCaps').textContent = agents.reduce((s, a) => s + a.capabilities.length, 0);
+  document.getElementById('agentCount').textContent = agents.length + ' loaded';
+
+  const list = document.getElementById('agentList');
+  list.innerHTML = '';
+  agents.forEach(a => {
+    const el = document.createElement('div');
+    el.className = 'agent-item';
+    el.id = 'agent-' + a.key;
+    el.onclick = () => selectAgent(a.key);
+    el.innerHTML = `<div class="name">${a.name}</div><div class="meta">${a.capabilities.length} capabilities</div>`;
+    list.appendChild(el);
+  });
+}
+
+function selectAgent(key) {
+  activeAgent = agents.find(a => a.key === key);
+  activeCapability = null;
+  document.querySelectorAll('.agent-item').forEach(el => el.classList.remove('active'));
+  document.getElementById('agent-' + key).classList.add('active');
+  document.getElementById('consoleEmpty').style.display = 'none';
+  document.getElementById('consoleBody').style.display = 'block';
+  document.getElementById('activeAgentName').textContent = activeAgent.name;
+  document.getElementById('activeAgentDesc').textContent = activeAgent.description;
+
+  const chips = document.getElementById('capChips');
+  chips.innerHTML = '<span class="cap-chip selected" onclick="selectCapability(null, this)">Free-form (ask)</span>';
+  activeAgent.capabilities.forEach(c => {
+    const chip = document.createElement('span');
+    chip.className = 'cap-chip';
+    chip.textContent = c.name;
+    chip.title = c.description;
+    chip.onclick = () => selectCapability(c, chip);
+    chips.appendChild(chip);
+  });
+  document.getElementById('resultOutput').className = 'output empty';
+  document.getElementById('resultOutput').textContent = 'No output yet.';
+}
+
+function selectCapability(cap, el) {
+  activeCapability = cap;
+  document.querySelectorAll('.cap-chip').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('queryInput').placeholder = cap
+    ? `Params for ${cap.name}: ${Object.keys(cap.parameters).join(', ') || 'none'} (plain text, agent will parse)`
+    : 'Describe the task or ask a free-form question...';
+}
+
+async function runQuery() {
+  if (!activeAgent) return;
+  const query = document.getElementById('queryInput').value.trim();
+  if (!query) return;
+  const btn = document.getElementById('runBtn');
+  const out = document.getElementById('resultOutput');
+  btn.disabled = true;
+  btn.textContent = 'Running...';
+  out.className = 'output';
+  out.textContent = 'Contacting ' + activeAgent.name + '...';
+
+  try {
+    let data;
+    if (activeCapability) {
+      // naive param fill: pass the raw query under the first declared param
+      const paramNames = Object.keys(activeCapability.parameters);
+      const params = {};
+      if (paramNames.length) params[paramNames[0]] = query;
+      data = await apiCall(`/agents/${activeAgent.key}/execute`, {
+        method: 'POST',
+        body: JSON.stringify({ tool: activeCapability.name, params }),
+      });
+    } else {
+      data = await apiCall('/chat', {
+        method: 'POST',
+        body: JSON.stringify({ agent: activeAgent.key, query }),
+      });
+    }
+    callCount++;
+    document.getElementById('statCalls').textContent = callCount;
+    const statusClass = data.success ? 'ok' : 'fail';
+    out.innerHTML = `<div class="meta-line">agent: ${data.agent} · ${(data.execution_time*1000).toFixed(0)}ms · <span class="${statusClass}">${data.success ? 'OK' : 'FAILED'}</span></div>` +
+      escapeHtml(JSON.stringify(data.data, null, 2));
+  } catch (e) {
+    out.className = 'output';
+    out.innerHTML = `<span class="fail">Error: ${escapeHtml(e.message)}</span>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Execute';
+  }
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ---------------------------------------------------------------------------
+// Extended features: Swarm, Plugins, Docs/Slides/Sheets/Websites, Research,
+// Images, Artifacts, Projects, Customize, Scheduled Tasks
+// ---------------------------------------------------------------------------
+let currentFeature = null;
+
+function openFeature(name) {
+  currentFeature = name;
+  document.querySelectorAll('.feature-chip').forEach(c => c.classList.remove('selected'));
+  document.querySelector(`.feature-chip[data-f="${name}"]`).classList.add('selected');
+  const panel = document.getElementById('featurePanel');
+  panel.classList.add('open');
+  const renderers = {
+    swarm: renderSwarm, plugins: renderPlugins, docs: () => renderGenerate('docs', 'Docs'),
+    slides: () => renderGenerate('slides', 'Slides'), sheets: () => renderGenerate('sheets', 'Sheets'),
+    websites: () => renderGenerate('websites', 'Websites'), research: renderResearch,
+    images: renderImages, artifacts: renderArtifacts, projects: renderProjects,
+    customize: renderCustomize, tasks: renderTasks,
+  };
+  (renderers[name] || (() => { panel.innerHTML = '<p class="note">Unknown feature.</p>'; }))();
+}
+
+function featureOutput(html) {
+  return `<div class="output" style="margin-top:14px">${html}</div>`;
+}
+
+// --- Swarm ---
+function renderSwarm() {
+  document.getElementById('featurePanel').innerHTML = `
+    <h3>Swarm</h3>
+    <p class="note">Dispatches your query to several relevant DATORYX agents at once and combines their answers. Leave agents blank to auto-pick.</p>
+    <textarea id="swarmQuery" rows="2" placeholder="What do you want the swarm to work on?"></textarea>
+    <div class="row"><button class="run-btn" onclick="runSwarm()">Run swarm</button></div>
+    <div id="swarmOut"></div>`;
+}
+async function runSwarm() {
+  const query = document.getElementById('swarmQuery').value.trim();
+  if (!query) return;
+  const out = document.getElementById('swarmOut');
+  out.innerHTML = featureOutput('Running swarm...');
+  try {
+    const data = await apiCall('/swarm', { method: 'POST', body: JSON.stringify({ query }) });
+    let html = `<b>Combined:</b><br>${escapeHtml(data.combined_summary)}<br><br><b>Per-agent:</b><br>`;
+    data.results.forEach(r => { html += `${escapeHtml(r.agent)}: ${r.success ? 'OK' : 'FAILED - ' + escapeHtml(r.message)}<br>`; });
+    out.innerHTML = featureOutput(html);
+  } catch (e) { out.innerHTML = featureOutput(`<span class="fail">Error: ${escapeHtml(e.message)}</span>`); }
+}
+
+// --- Plugins ---
+function renderPlugins() {
+  document.getElementById('featurePanel').innerHTML = `
+    <h3>Plugins (MCP servers)</h3>
+    <p class="note">Shows MCP servers configured in mcp_servers.json. Nothing configured = nothing to show here.</p>
+    <div class="row"><button class="run-btn" onclick="loadPlugins()">Refresh</button></div>
+    <div id="pluginsOut"></div>`;
+  loadPlugins();
+}
+async function loadPlugins() {
+  const out = document.getElementById('pluginsOut');
+  out.innerHTML = featureOutput('Loading...');
+  try {
+    const data = await apiCall('/plugins');
+    if (!data.length) { out.innerHTML = featureOutput('No MCP servers configured. See mcp_servers.example.json.'); return; }
+    let html = '';
+    data.forEach(s => { html += `<b>${escapeHtml(s.name)}</b>: ${s.error ? '<span class="fail">' + escapeHtml(s.error) + '</span>' : s.tools.length + ' tools'}<br>`; });
+    out.innerHTML = featureOutput(html);
+  } catch (e) { out.innerHTML = featureOutput(`<span class="fail">Error: ${escapeHtml(e.message)}</span>`); }
+}
+
+// --- Docs / Slides / Sheets / Websites (shared form) ---
+function renderGenerate(kind, label) {
+  document.getElementById('featurePanel').innerHTML = `
+    <h3>${label}</h3>
+    <p class="note">Generates a real, downloadable ${kind === 'websites' ? '.html' : kind === 'docs' ? '.docx' : kind === 'slides' ? '.pptx' : '.xlsx'} file from a topic.</p>
+    <div class="row">
+      <input type="text" id="genTopic" placeholder="Topic..." style="flex:1">
+      <button class="run-btn" onclick="runGenerate('${kind}')">Generate</button>
+    </div>
+    <div id="genOut"></div>`;
+}
+async function runGenerate(kind) {
+  const topic = document.getElementById('genTopic').value.trim();
+  if (!topic) return;
+  const out = document.getElementById('genOut');
+  out.innerHTML = featureOutput('Generating (LLM draft + file build)...');
+  try {
+    const data = await apiCall(`/generate/${kind}`, { method: 'POST', body: JSON.stringify({ topic }) });
+    out.innerHTML = featureOutput(`Done: <a href="${API + data.download_url}" target="_blank">${escapeHtml(data.filename)}</a> (also in Artifacts)`);
+  } catch (e) { out.innerHTML = featureOutput(`<span class="fail">Error: ${escapeHtml(e.message)}</span>`); }
+}
+
+// --- Deep Research ---
+function renderResearch() {
+  document.getElementById('featurePanel').innerHTML = `
+    <h3>Deep Research</h3>
+    <p class="note">Web-grounded if TAVILY_API_KEY is set on the backend; otherwise LLM-reasoning only (clearly labeled in the result).</p>
+    <div class="row">
+      <input type="text" id="researchTopic" placeholder="Research topic..." style="flex:1">
+      <button class="run-btn" onclick="runResearchUI()">Research</button>
+    </div>
+    <div id="researchOut"></div>`;
+}
+async function runResearchUI() {
+  const topic = document.getElementById('researchTopic').value.trim();
+  if (!topic) return;
+  const out = document.getElementById('researchOut');
+  out.innerHTML = featureOutput('Researching...');
+  try {
+    const data = await apiCall('/research', { method: 'POST', body: JSON.stringify({ topic }) });
+    out.innerHTML = featureOutput(`<i>${escapeHtml(data.mode_note)}</i><br><br>${escapeHtml(data.report)}`);
+  } catch (e) { out.innerHTML = featureOutput(`<span class="fail">Error: ${escapeHtml(e.message)}</span>`); }
+}
+
+// --- Images ---
+function renderImages() {
+  document.getElementById('featurePanel').innerHTML = `
+    <h3>Images</h3>
+    <p class="note">Uses OpenAI's image API via your OPENAI_API_KEY. Not configured = clear error, not a fake image.</p>
+    <div class="row">
+      <input type="text" id="imagePrompt" placeholder="Describe the image..." style="flex:1">
+      <button class="run-btn" onclick="runImage()">Generate</button>
+    </div>
+    <div id="imageOut"></div>`;
+}
+async function runImage() {
+  const prompt = document.getElementById('imagePrompt').value.trim();
+  if (!prompt) return;
+  const out = document.getElementById('imageOut');
+  out.innerHTML = featureOutput('Generating...');
+  try {
+    const data = await apiCall('/images/generate', { method: 'POST', body: JSON.stringify({ prompt }) });
+    out.innerHTML = featureOutput(`<img src="${data.url}" style="max-width:100%;border-radius:4px">`);
+  } catch (e) { out.innerHTML = featureOutput(`<span class="fail">Error: ${escapeHtml(e.message)}</span>`); }
+}
+
+// --- Artifacts ---
+function renderArtifacts() {
+  document.getElementById('featurePanel').innerHTML = `<h3>Artifacts</h3><p class="note">Everything you've generated (Docs/Slides/Sheets/Websites).</p><div id="artifactsOut"></div>`;
+  loadArtifacts();
+}
+async function loadArtifacts() {
+  const out = document.getElementById('artifactsOut');
+  out.innerHTML = featureOutput('Loading...');
+  try {
+    const data = await apiCall('/artifacts');
+    if (!data.length) { out.innerHTML = featureOutput('No artifacts yet - generate something in Docs/Slides/Sheets/Websites.'); return; }
+    let html = '';
+    data.forEach(a => { html += `<div class="list-item">[${escapeHtml(a.kind)}] <a href="${API}/artifacts/${a.artifact_id}/download" target="_blank">${escapeHtml(a.filename)}</a></div>`; });
+    out.innerHTML = html;
+  } catch (e) { out.innerHTML = featureOutput(`<span class="fail">Error: ${escapeHtml(e.message)}</span>`); }
+}
+
+// --- Projects ---
+function renderProjects() {
+  document.getElementById('featurePanel').innerHTML = `
+    <h3>Projects</h3>
+    <p class="note">Simple named groupings of your artifacts.</p>
+    <div class="row"><input type="text" id="projectName" placeholder="Project name..."><button class="run-btn" onclick="createProject()">Create</button></div>
+    <div id="projectsOut"></div>`;
+  loadProjects();
+}
+async function createProject() {
+  const name = document.getElementById('projectName').value.trim();
+  if (!name) return;
+  try { await apiCall('/projects', { method: 'POST', body: JSON.stringify({ name, artifact_ids: [] }) }); loadProjects(); }
+  catch (e) { document.getElementById('projectsOut').innerHTML = featureOutput(`<span class="fail">Error: ${escapeHtml(e.message)}</span>`); }
+}
+async function loadProjects() {
+  const out = document.getElementById('projectsOut');
+  try {
+    const data = await apiCall('/projects');
+    out.innerHTML = data.length ? data.map(p => `<div class="list-item">${escapeHtml(p.name)}</div>`).join('') : featureOutput('No projects yet.');
+  } catch (e) { out.innerHTML = featureOutput(`<span class="fail">Error: ${escapeHtml(e.message)}</span>`); }
+}
+
+// --- Customize ---
+function renderCustomize() {
+  document.getElementById('featurePanel').innerHTML = `
+    <h3>Customize</h3>
+    <p class="note">Custom instructions applied as a system prompt hint (used by future agent calls you wire it into).</p>
+    <textarea id="customizeText" rows="3" placeholder="e.g. Always answer in bullet points."></textarea>
+    <div class="row"><button class="run-btn" onclick="saveCustomize()">Save</button></div>
+    <div id="customizeOut"></div>`;
+  loadCustomize();
+}
+async function loadCustomize() {
+  try { const data = await apiCall('/customize'); document.getElementById('customizeText').value = data.custom_instructions || ''; }
+  catch (e) { /* fine - empty default already shown */ }
+}
+async function saveCustomize() {
+  const custom_instructions = document.getElementById('customizeText').value;
+  try { await apiCall('/customize', { method: 'PUT', body: JSON.stringify({ custom_instructions }) }); document.getElementById('customizeOut').innerHTML = featureOutput('Saved.'); }
+  catch (e) { document.getElementById('customizeOut').innerHTML = featureOutput(`<span class="fail">Error: ${escapeHtml(e.message)}</span>`); }
+}
+
+// --- Scheduled Tasks ---
+function renderTasks() {
+  document.getElementById('featurePanel').innerHTML = `
+    <h3>Scheduled Tasks</h3>
+    <p class="note">Only fires while this backend process stays running - won't fire while a free-tier host is asleep.</p>
+    <div class="row">
+      <input type="text" id="taskAgent" placeholder="agent key (e.g. sql)">
+      <input type="text" id="taskQuery" placeholder="query" style="flex:1">
+      <input type="number" id="taskInterval" placeholder="every N minutes" value="60" style="width:130px">
+      <button class="run-btn" onclick="createTask()">Schedule</button>
+    </div>
+    <div id="tasksOut"></div>`;
+  loadTasks();
+}
+async function createTask() {
+  const agent = document.getElementById('taskAgent').value.trim();
+  const query = document.getElementById('taskQuery').value.trim();
+  const run_every_minutes = parseInt(document.getElementById('taskInterval').value, 10) || 60;
+  if (!agent || !query) return;
+  try { await apiCall('/tasks', { method: 'POST', body: JSON.stringify({ agent, query, run_every_minutes }) }); loadTasks(); }
+  catch (e) { document.getElementById('tasksOut').innerHTML = featureOutput(`<span class="fail">Error: ${escapeHtml(e.message)}</span>`); }
+}
+async function deleteTask(id) {
+  try { await apiCall(`/tasks/${id}`, { method: 'DELETE' }); loadTasks(); } catch (e) {}
+}
+async function loadTasks() {
+  const out = document.getElementById('tasksOut');
+  try {
+    const data = await apiCall('/tasks');
+    out.innerHTML = data.length
+      ? data.map(t => `<div class="list-item">${escapeHtml(t.agent)}: "${escapeHtml(t.query)}" every ${t.run_every_minutes}min <span class="del" onclick="deleteTask('${t.task_id}')">delete</span></div>`).join('')
+      : featureOutput('No scheduled tasks yet.');
+  } catch (e) { out.innerHTML = featureOutput(`<span class="fail">Error: ${escapeHtml(e.message)}</span>`); }
+}
+
+checkHealth();
+if (token) { enterApp().catch(() => logout()); }
+</script>
+</body>
+</html>

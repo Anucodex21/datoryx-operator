@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.env
+backend/api/users.json
+backend/api/artifacts.json
+backend/api/projects.json
+backend/api/customize.json
+backend/api/scheduled_tasks.json
+backend/generated_artifacts/
+*.db
+node_modules/
+
+# Model weights (too large for GitHub, host on Hugging Face instead)
+backend/models/daxro_finetuned/adapter/
+daxro_modal_deploy/adapter/
+backend/models/native/checkpoint/
+*.safetensors

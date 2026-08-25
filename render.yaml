@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: datoryx-operator-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    envVars:
+      - key: DATORYX_JWT_SECRET
+        generateValue: true
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROK_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: DAXRO_REMOTE_URL
+        sync: false
+      - key: DAXRO_REMOTE_TOKEN
+        sync: false
+      - key: TAVILY_API_KEY
+        sync: false
+    healthCheckPath: /health

@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": { "GITHUB_TOKEN": "your-token-here" }
+    },
+    "ollama": {
+      "command": "npx",
+      "args": ["-y", "ollama-mcp"],
+      "env": { "OLLAMA_HOST": "http://localhost:11434" }
+    }
+  }
+}
