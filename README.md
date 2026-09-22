@@ -1,4 +1,4 @@
-# DATORYX Operator
+# DATORYX 
 
 A local-first, MCP-native multi-agent AI operator — built by unifying
 [DATORYX](.) (21 specialized LLM-backed agents, brain/memory layers) into a
