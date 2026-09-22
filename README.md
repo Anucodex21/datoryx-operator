@@ -96,7 +96,7 @@ before spending any API credit.
 3. **`groq`** → **`openai`** → **`anthropic`** → **`gemini`** — whichever
    cloud keys you set in `.env`, tried in that order on failure.
 
-You don't need all of them — set whichever keys you have, or none at all.
+You don't need all of them — set whichever keys you have or none at all.
 One note: a **Groq key alone already gets you Llama access**, since Groq
 hosts Meta's Llama 3.x models — there's no separate "Llama API" to sign up
 for unless you specifically want to run a Llama GGUF file locally via the
