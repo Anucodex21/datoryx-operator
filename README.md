@@ -1,6 +1,6 @@
 # DATORYX 
 
-A local-first, MCP-native multi-agent AI operator — built by unifying
+A local, MCP-native multi-agent AI operator — built by Anucodex21
 [DATORYX](.) (21 specialized LLM-backed agents, brain/memory layers) into a
 single system any MCP client, browser, or REST client can drive.
 
