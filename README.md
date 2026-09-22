@@ -4,7 +4,7 @@ A local-first, MCP-native multi-agent AI operator — built by unifying
 [DATORYX](.) (21 specialized LLM-backed agents, brain/memory layers) into a
 single system any MCP client, browser, or REST client can drive.
 
-**New here?** See [`START_HERE.md`](START_HERE.md) for the full
+**New here?** See [`START_HERE.md`](START_HERE.md) for the fully
 walkthrough — API keys, running locally, training DAXRO 1.0, and
 deploying to GitHub + Render + Vercel, all in order. This README covers
 architecture and what's been tested.
