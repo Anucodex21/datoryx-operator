@@ -12,7 +12,7 @@ architecture and what's been tested.
 ## What this is
 
 DATORYX already had the hard parts: 20 real, LLM-backed specialized agents
-(coding, research, data science, security, devops, SQL, forecasting, ...),
+(coding, research, data science, security, devops, sql, forecasting, ...),
 a shared multi-provider `LLMManager` with local/offline fallback, and a
 memory system (episodic / semantic / vector / long-term / short-term /
 knowledge graph). What it didn't have was a standard way for outside tools
